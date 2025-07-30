@@ -11,4 +11,4 @@ for %%f in (lib\*.jar) do (
 echo CLASSPATH: !CLASSPATH!
 set CLASSPATH=!CLASSPATH!
 REM java -Dfile.encoding=UTF-8 -cp !CLASSPATH! -Xmx1536m groovy.ui.GroovyMain PostgresMigrator.groovy
-java -Dfile.encoding=UTF-8 -cp !CLASSPATH! -Xmx1536m groovy.ui.GroovyMain UiMain.groovy
+java -Dfile.encoding=UTF-8 -cp !CLASSPATH! -Xmx1536m -Xms1536m groovy.ui.GroovyMain UiMain.groovy

@@ -303,11 +303,11 @@ public class PostgresMigrator {
         String postgresPassword,
         int streamBufferSize
     ) {
-        long startTime = System.currentTimeMillis();
-        MigrationResult result = new MigrationResult(tableName);
-        Connection srcConn = null;
-        Connection postgresConn = null;
-        Statement stmt = null;
+    long startTime = System.currentTimeMillis();
+    MigrationResult result = new MigrationResult(tableName);
+    Connection srcConn = null;
+    Connection postgresConn = null;
+    Statement stmt = null;
         try {
             // 各スレッドでDB接続を新規作成
             srcConn = DriverManager.getConnection(srcUrl, srcUser, srcPassword);
@@ -319,6 +319,8 @@ public class PostgresMigrator {
             stmt = postgresConn.createStatement();
             try {
                 stmt.executeUpdate("ALTER TABLE " + tableName + " SET UNLOGGED");
+                // ...インデックス無効化処理はPostgreSQLでは不要...
+
                 stmt.executeUpdate("TRUNCATE TABLE " + tableName + " RESTART IDENTITY CASCADE");
                 postgresConn.commit();
             } finally {
@@ -407,6 +409,25 @@ public class PostgresMigrator {
             result.errorMessage = e.getMessage();
         } finally {
             // スレッド毎に接続クローズ
+
+            // ...インデックス有効化処理はPostgreSQLでは不要...
+            if (postgresConn != null) {
+                Statement stmtLogged = null;
+                try {
+                    stmtLogged = postgresConn.createStatement();
+                    try {
+                        stmtLogged.executeUpdate("ALTER TABLE " + tableName + " SET LOGGED");
+                        postgresConn.commit();
+                    } catch (Exception ex) {
+                        log("LOGGED化失敗: " + tableName + " - " + ex.getMessage());
+                        try { postgresConn.rollback(); } catch (Exception ignore) {}
+                    }
+                } catch (Exception ex) {
+                    log("LOGGED化処理エラー: " + ex.getMessage());
+                } finally {
+                    if (stmtLogged != null) stmtLogged.close();
+                }
+            }
             try { if (srcConn != null && !srcConn.isClosed()) srcConn.close(); } catch (Exception ignore) {}
             try { if (postgresConn != null && !postgresConn.isClosed()) postgresConn.close(); } catch (Exception ignore) {}
         }
